@@ -14,6 +14,28 @@
 
 ---
 
+## 下载安装（推荐）
+
+不想装 Go、不想编译？直接到 [Releases](https://github.com/Himer/mini-agent/releases) 下载对应系统的预编译二进制，解压即用。
+
+已发布的平台：
+
+- **Linux**：`amd64` / `arm64` / `armv7` / `armv6` / `386` / `mipsle` / `mips64le`（覆盖常见 NAS / 路由器 / 嵌入式）
+- **macOS**：`amd64` / `arm64`
+- **Windows**：`amd64` / `arm64`
+
+每个压缩包内含：可执行二进制、`config.example.yaml`、`README.md`，零依赖、不需要装任何运行时。
+
+```bash
+# 以 Linux amd64 为例
+tar xzf mini-agent-v0.1.0-linux-amd64.tar.gz
+cd mini-agent-v0.1.0-linux-amd64
+cp config.example.yaml config.yaml      # 改成你的模型信息
+./mini-agent --task "看看本地哪个文件最大"
+```
+
+---
+
 ## 1. 准备配置
 
 ```bash
@@ -70,21 +92,3 @@ go build -o mini.exe .
 | ---------- | ------------ | --------------- |
 | `--task`   | 任务描述（**必填**） | -               |
 | `--config` | 配置文件路径       | `./config.yaml` |
-
-## 自动发布
-
-仓库已配置 GitHub Actions（`.github/workflows/release.yml`），打 tag 即可自动交叉编译并发布到 Releases：
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-会同时产出以下平台的压缩包（每个包内含二进制 + `config.example.yaml` + `README.md`）：
-
-- Linux：`amd64` / `arm64` / `armv7` / `armv6` / `386` / `mipsle` / `mips64le`（覆盖常见 NAS / 路由器 / 嵌入式）
-- macOS：`amd64` / `arm64`
-- Windows：`amd64` / `arm64`
-
-由于纯 Go + 标准库，`CGO_ENABLED=0`，不需要任何系统依赖。
-
