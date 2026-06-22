@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm && format('v{0}', matrix.goarm) || '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # mini-agent 是纯 Go + 标准库，无 CGO，因此只用一个 ubuntu runner 交叉编译全部目标平台。
+      matrix:
+        include:
+          # 桌面 / 服务器
+          - { goos: linux,   goarch: amd64 }
+          - { goos: linux,   goarch: arm64 }
+          - { goos: linux,   goarch: "386" }
+          - { goos: darwin,  goarch: amd64 }
+          - { goos: darwin,  goarch: arm64 }
+          - { goos: windows, goarch: amd64, suffix: ".exe" }
+          - { goos: windows, goarch: arm64, suffix: ".exe" }
+          # 常见 NAS / 嵌入式
+          - { goos: linux,   goarch: arm,      goarm: "7" }   # 树莓派 / armv7 NAS
+          - { goos: linux,   goarch: arm,      goarm: "6" }   # 老 ARM 设备
+          - { goos: linux,   goarch: mipsle,   gomips: "softfloat" }   # 部分路由器
+          - { goos: linux,   goarch: mips64le, gomips: "softfloat" }   # 部分 NAS
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        shell: bash
+        env:
+          CGO_ENABLED: "0"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          GOMIPS: ${{ matrix.gomips }}
+        run: |
+          mkdir -p dist
+          BIN="mini-agent${{ matrix.suffix }}"
+          # -s -w 去符号 / -trimpath 去本机路径，让二进制更小、更可复现
+          go build -trimpath -ldflags "-s -w -X main.version=${{ steps.version.outputs.version }}" \
+            -o "dist/${BIN}" .
+          ls -lh "dist/${BIN}"
+
+      - name: Package
+        id: pack
+        shell: bash
+        run: |
+          VER="${{ steps.version.outputs.version }}"
+          ARCH_TAG="${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ -n "${{ matrix.goarm }}" ]; then
+            ARCH_TAG="${ARCH_TAG}v${{ matrix.goarm }}"
+          fi
+
+          STAGE="mini-agent-${VER}-${ARCH_TAG}"
+          mkdir -p "${STAGE}"
+          cp "dist/mini-agent${{ matrix.suffix }}" "${STAGE}/"
+          cp config.example.yaml README.md "${STAGE}/" 2>/dev/null || true
+
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            ARCHIVE="${STAGE}.zip"
+            zip -r "${ARCHIVE}" "${STAGE}"
+          else
+            ARCHIVE="${STAGE}.tar.gz"
+            tar czf "${ARCHIVE}" "${STAGE}"
+          fi
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+          ls -lh "${ARCHIVE}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mini-agent-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm && format('v{0}', matrix.goarm) || '' }}
+          path: ${{ steps.pack.outputs.archive }}
+          retention-days: 5
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lh artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*

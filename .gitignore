@@ -1,0 +1,23 @@
+# 二进制产物
+mini-agent
+mini-agent.exe
+mini.exe
+mini
+dist/
+build/
+
+# 个人配置（含真实 API Key，禁止入库）
+config.yaml
+
+# 调试落盘（旧版会写，留着以防）
+last_request.json
+last_response.json
+
+# 编辑器 / IDE
+.idea/
+.vscode/
+*.swp
+
+# OS 杂物
+.DS_Store
+Thumbs.db
