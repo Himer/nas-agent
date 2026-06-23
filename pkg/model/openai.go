@@ -1,7 +1,6 @@
 // Package model 提供大语言模型实现。
 //
-// 对应 Python 版 minisweagent/models/litellm_model.py。
-// 这里不依赖 litellm，直接走 OpenAI 兼容的 /chat/completions 接口，
+// 直接走 OpenAI 兼容的 /chat/completions 接口，
 // 因此可以接 OpenAI、DeepSeek、Qwen、Moonshot、本地 vLLM 等任何兼容服务。
 package model
 
@@ -16,11 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Himer/mini-agent/pkg/types"
+	"github.com/Himer/nas-agent/pkg/types"
 )
 
 // BashTool 是开放给大模型的唯一工具：执行 bash 命令。
-// 与 Python 版 BASH_TOOL 字段一致。
 var BashTool = map[string]any{
 	"type": "function",
 	"function": map[string]any{

@@ -1,21 +1,21 @@
-// Command mini 是 mini-agent 的 CLI 入口。
+// Command nas-agent 是 nas-agent 的 CLI 入口。
 //
 // 配置来源：
 //   - model.*：仅从环境变量读取，不支持 CLI / 配置文件
-//       MINI_AGENT_MODEL_NAME   模型名称（必填）
-//       MINI_AGENT_BASE_URL     OpenAI 兼容 BaseURL（必填）
-//       MINI_AGENT_API_KEY      API Key（必填）
+//       NAS_AGENT_MODEL_NAME   模型名称（必填）
+//       NAS_AGENT_BASE_URL     OpenAI 兼容 BaseURL（必填）
+//       NAS_AGENT_API_KEY      API Key（必填）
 //   - agent.* / environment.*：环境变量 + 命令行，命令行优先，不再支持配置文件
-//       MINI_AGENT_STEP_LIMIT     / --step-limit
-//       MINI_AGENT_SKIP_CONFIRM   / --skip-confirm
-//       MINI_AGENT_CWD            / --cwd
-//       MINI_AGENT_TIMEOUT        / --timeout
+//       NAS_AGENT_STEP_LIMIT     / --step-limit
+//       NAS_AGENT_SKIP_CONFIRM   / --skip-confirm
+//       NAS_AGENT_CWD            / --cwd
+//       NAS_AGENT_TIMEOUT        / --timeout
 //   - 任务通过 --task 传入（必填）
 //
 // 用法：
 //
-//	mini --task "你的任务"
-//	mini --task "..." --step-limit 50 --timeout 60 --skip-confirm
+//	nas-agent --task "你的任务"
+//	nas-agent --task "..." --step-limit 50 --timeout 60 --skip-confirm
 package main
 
 import (
@@ -29,20 +29,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Himer/mini-agent/pkg/agent"
-	"github.com/Himer/mini-agent/pkg/environment"
-	"github.com/Himer/mini-agent/pkg/model"
+	"github.com/Himer/nas-agent/pkg/agent"
+	"github.com/Himer/nas-agent/pkg/environment"
+	"github.com/Himer/nas-agent/pkg/model"
 )
 
 // 环境变量名集中定义，避免散落各处。
 const (
-	envModelName   = "MINI_AGENT_MODEL_NAME"
-	envBaseURL     = "MINI_AGENT_BASE_URL"
-	envAPIKey      = "MINI_AGENT_API_KEY"
-	envStepLimit   = "MINI_AGENT_STEP_LIMIT"
-	envSkipConfirm = "MINI_AGENT_SKIP_CONFIRM"
-	envCwd         = "MINI_AGENT_CWD"
-	envTimeout     = "MINI_AGENT_TIMEOUT"
+	envModelName   = "NAS_AGENT_MODEL_NAME"
+	envBaseURL     = "NAS_AGENT_BASE_URL"
+	envAPIKey      = "NAS_AGENT_API_KEY"
+	envStepLimit   = "NAS_AGENT_STEP_LIMIT"
+	envSkipConfirm = "NAS_AGENT_SKIP_CONFIRM"
+	envCwd         = "NAS_AGENT_CWD"
+	envTimeout     = "NAS_AGENT_TIMEOUT"
 )
 
 func main() {
@@ -142,7 +142,7 @@ func main() {
 	a := agent.New(m, env, stepLimit, !skipConfirm)
 
 	_, _ = fmt.Println("\x1b[1m\x1b[36m╭──────────────────────────────────────────────────────────────╮\x1b[0m")
-	_, _ = fmt.Printf("\x1b[1m\x1b[36m│\x1b[0m \x1b[1m👋 mini-agent (go)\x1b[0m  \x1b[2mmodel=\x1b[0m%-32s         \x1b[1m\x1b[36m│\x1b[0m\n", truncate(modelName, 32))
+	_, _ = fmt.Printf("\x1b[1m\x1b[36m│\x1b[0m \x1b[1m👋 nas-agent (go)\x1b[0m  \x1b[2mmodel=\x1b[0m%-32s         \x1b[1m\x1b[36m│\x1b[0m\n", truncate(modelName, 32))
 	_, _ = fmt.Printf("\x1b[1m\x1b[36m│\x1b[0m \x1b[2mbase  :\x1b[0m %-52s \x1b[1m\x1b[36m│\x1b[0m\n", truncate(baseURL, 52))
 	_, _ = fmt.Printf("\x1b[1m\x1b[36m│\x1b[0m \x1b[2mskip_confirm:\x1b[0m %-46v \x1b[1m\x1b[36m│\x1b[0m\n", skipConfirm)
 	_, _ = fmt.Println("\x1b[1m\x1b[36m╰──────────────────────────────────────────────────────────────╯\x1b[0m")

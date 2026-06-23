@@ -1,6 +1,5 @@
 // Package agent 实现 Agent 控制循环。
 //
-// 对应 Python 版 minisweagent/agents/default.py。
 // 整个 Agent 的灵魂就是一个 for 循环：问模型 → 执行命令 → 把结果加回历史 → 重复。
 package agent
 
@@ -13,9 +12,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Himer/mini-agent/pkg/config"
-	"github.com/Himer/mini-agent/pkg/environment"
-	"github.com/Himer/mini-agent/pkg/types"
+	"github.com/Himer/nas-agent/pkg/config"
+	"github.com/Himer/nas-agent/pkg/environment"
+	"github.com/Himer/nas-agent/pkg/types"
 )
 
 // ANSI 颜色（Windows 10+ 终端原生支持）。
@@ -132,7 +131,7 @@ func makeToolResult(act types.Action, r types.ExecResult) types.Message {
 	}
 	_, _ = fmt.Fprintf(&sb, "<returncode>%d</returncode>\n", r.ReturnCode)
 	out := r.Output
-	if len(out) > 10000 { // 与 Python 版一致：过长输出截断头尾
+	if len(out) > 10000 { // 过长输出截断头尾，保留首尾各 5000 字
 		out = out[:5000] + "\n...[elided]...\n" + out[len(out)-5000:]
 	}
 	_, _ = fmt.Fprintf(&sb, "<output>\n%s\n</output>", out)

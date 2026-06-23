@@ -1,8 +1,7 @@
-// Package types 定义 mini-agent 的核心接口和数据结构。
+// Package types 定义 nas-agent 的核心接口和数据结构。
 //
-// 对应 Python 版 minisweagent/__init__.py 里的 Protocol 定义。
-// Go 用 interface 实现"鸭子类型"，效果与 Python Protocol 完全一致：
-// 只要实现了接口里的全部方法，就可以被当作该类型使用。
+// Go 用 interface 实现"鸭子类型"——只要实现了接口里的全部方法，
+// 就可以被当作该类型使用。
 package types
 
 import "context"
@@ -64,7 +63,7 @@ type Model interface {
 //
 // 默认实现是本地 shell；可以替换为 Docker、远程沙盒等。
 type Environment interface {
-	// Execute 执行单条命令并返回结果。每次调用都是独立子进程（与 Python 版一致）。
+	// Execute 执行单条命令并返回结果。每次调用都是独立子进程。
 	Execute(ctx context.Context, action Action) ExecResult
 }
 

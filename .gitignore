@@ -1,8 +1,6 @@
 # 二进制产物
-mini-agent
-mini-agent.exe
-mini.exe
-mini
+nas-agent
+nas-agent.exe
 dist/
 build/
 

@@ -1,3 +1,3 @@
-module github.com/Himer/mini-agent
+module github.com/Himer/nas-agent
 
 go 1.21

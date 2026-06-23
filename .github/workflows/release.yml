@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # mini-agent 是纯 Go + 标准库，无 CGO，因此只用一个 ubuntu runner 交叉编译全部目标平台。
+      # nas-agent 是纯 Go + 标准库，无 CGO，因此只用一个 ubuntu runner 交叉编译全部目标平台。
       matrix:
         include:
           # 桌面 / 服务器
@@ -55,7 +55,7 @@ jobs:
           GOMIPS: ${{ matrix.gomips }}
         run: |
           mkdir -p dist
-          BIN="mini-agent${{ matrix.suffix }}"
+          BIN="nas-agent${{ matrix.suffix }}"
           # -s -w 去符号 / -trimpath 去本机路径，让二进制更小、更可复现
           go build -trimpath -ldflags "-s -w -X main.version=${{ steps.version.outputs.version }}" \
             -o "dist/${BIN}" .
@@ -71,9 +71,9 @@ jobs:
             ARCH_TAG="${ARCH_TAG}v${{ matrix.goarm }}"
           fi
 
-          STAGE="mini-agent-${VER}-${ARCH_TAG}"
+          STAGE="nas-agent-${VER}-${ARCH_TAG}"
           mkdir -p "${STAGE}"
-          cp "dist/mini-agent${{ matrix.suffix }}" "${STAGE}/"
+          cp "dist/nas-agent${{ matrix.suffix }}" "${STAGE}/"
           cp config.example.yaml README.md "${STAGE}/" 2>/dev/null || true
 
           if [ "${{ matrix.goos }}" = "windows" ]; then
@@ -89,7 +89,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mini-agent-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm && format('v{0}', matrix.goarm) || '' }}
+          name: nas-agent-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm && format('v{0}', matrix.goarm) || '' }}
           path: ${{ steps.pack.outputs.archive }}
           retention-days: 5
 
