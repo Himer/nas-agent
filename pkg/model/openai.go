@@ -56,7 +56,7 @@ func NewOpenAI(apiKey, baseURL, modelName string) *OpenAI {
 		APIKey:     apiKey,
 		BaseURL:    strings.TrimRight(baseURL, "/"),
 		ModelName:  modelName,
-		HTTPClient: &http.Client{Timeout: 5 * time.Minute},
+		HTTPClient: &http.Client{Timeout: 15 * time.Minute},
 	}
 }
 

@@ -24,55 +24,58 @@
 - **macOS**：`amd64` / `arm64`
 - **Windows**：`amd64` / `arm64`
 
-每个压缩包内含：可执行二进制、`config.example.yaml`、`README.md`，零依赖、不需要装任何运行时。
+每个压缩包内含：可执行二进制、`README.md`，零依赖、不需要装任何运行时。
 
 ```bash
 # 以 Linux amd64 为例
 tar xzf mini-agent-v0.1.0-linux-amd64.tar.gz
 cd mini-agent-v0.1.0-linux-amd64
-cp config.example.yaml config.yaml      # 改成你的模型信息
+export MINI_AGENT_MODEL_NAME=deepseek-chat
+export MINI_AGENT_BASE_URL=https://api.deepseek.com/v1
+export MINI_AGENT_API_KEY=sk-xxxxxxxxxxxx
 ./mini-agent --task "看看本地哪个文件最大"
 ```
 
 ---
 
-## 1. 准备配置
+## 1. 配置模型（必填，仅环境变量）
+
+模型相关三项**只从环境变量读取**，不再支持 YAML 也不接受命令行参数：
+
+| 环境变量                    | 说明                | 示例                            |
+| ----------------------- | ----------------- | ----------------------------- |
+| `MINI_AGENT_MODEL_NAME` | 模型名称              | `deepseek-chat`               |
+| `MINI_AGENT_BASE_URL`   | OpenAI 兼容 BaseURL | `https://api.deepseek.com/v1` |
+| `MINI_AGENT_API_KEY`    | API Key           | `sk-xxxxxxxxxxxx`             |
+
+Linux / macOS：
 
 ```bash
-cp config.example.yaml config.yaml
+export MINI_AGENT_MODEL_NAME=deepseek-chat
+export MINI_AGENT_BASE_URL=https://api.deepseek.com/v1
+export MINI_AGENT_API_KEY=sk-xxxxxxxxxxxx
 ```
 
-编辑 `config.yaml`，填入你的模型信息：
+Windows（cmd）：
 
-```yaml
-model:
-  name: deepseek-chat
-  base_url: https://api.deepseek.com/v1
-  api_key: sk-xxxxxxxxxxxx
-
-agent:
-  step_limit: 30
-  skip_confirm: false      # true = 不询问直接执行命令
-
-environment:
-  cwd: ""                  # 空 = 当前目录
-  timeout: 30              # 单条命令超时（秒）
+```cmd
+set MINI_AGENT_MODEL_NAME=deepseek-chat
+set MINI_AGENT_BASE_URL=https://api.deepseek.com/v1
+set MINI_AGENT_API_KEY=sk-xxxxxxxxxxxx
 ```
-
-> 所有配置 **只从 YAML 读取**，命令行只负责传 `--task`。
-
-> ⚠️ **强烈建议保持 `skip_confirm: false`，数据无价。**
-> 开启 `skip_confirm: true` 后 AI 生成的每一条命令都会直接执行，没有人工确认环节。
 
 ## 2. 运行
 
 ```bash
-# 使用默认 ./config.yaml
-go run . --task "在当前目录创建一个 hello.py 并运行它打印 Hello World"
+# 最小用法（model 走环境变量，其余走内置默认值）
+./mini-agent --task "在当前目录创建一个 hello.py 并运行它打印 Hello World"
 
-# 指定其它配置文件
-go run . --config /path/to/my.yaml --task "..."
+# 覆盖 agent / environment 配置
+./mini-agent --task "..." --step-limit 50 --timeout 60 --cwd /data1 --skip-confirm
 ```
+
+> ⚠️ **强烈建议不要加 `--skip-confirm`，数据无价。**
+> 开启后 AI 生成的每一条命令都会直接执行，没有人工确认环节。
 
 ## 3. 编译为可执行文件
 
@@ -88,7 +91,32 @@ go build -o mini.exe .
 
 ## 命令行参数
 
-| 参数         | 说明           | 默认值             |
-| ---------- | ------------ | --------------- |
-| `--task`   | 任务描述（**必填**） | -               |
-| `--config` | 配置文件路径       | `./config.yaml` |
+只有 `--task` 提供短别名 `-t`，其余参数仅长形式（Go `flag` 包对 `-` 和 `--` 一视同仁）。
+
+| 参数               | 说明                                     | 默认值   |
+| ---------------- | -------------------------------------- | ----- |
+| `--task` / `-t`  | 任务描述（**必填**）                           | -     |
+| `--step-limit`   | Agent 最大步数（覆盖 `MINI_AGENT_STEP_LIMIT`） | 30    |
+| `--timeout`      | 单条命令超时秒数（覆盖 `MINI_AGENT_TIMEOUT`）      | 30    |
+| `--cwd`          | 命令工作目录（覆盖 `MINI_AGENT_CWD`）            | 当前目录  |
+| `--skip-confirm` | 不询问直接执行（覆盖 `MINI_AGENT_SKIP_CONFIRM`）  | false |
+
+示例：
+
+```bash
+./mini-agent -t "看看本地哪个文件最大" --step-limit 50 --timeout 60 --cwd /data1 --skip-confirm
+```
+
+## 环境变量
+
+| 环境变量                      | 说明                              | 是否可被 CLI 覆盖         |
+| ------------------------- | ------------------------------- | ------------------- |
+| `MINI_AGENT_MODEL_NAME`   | 模型名称（**必填**）                    | 否                   |
+| `MINI_AGENT_BASE_URL`     | OpenAI 兼容 BaseURL（**必填**）       | 否                   |
+| `MINI_AGENT_API_KEY`      | API Key（**必填**）                 | 否                   |
+| `MINI_AGENT_STEP_LIMIT`   | Agent 最大步数                      | 是（`--step-limit`）   |
+| `MINI_AGENT_TIMEOUT`      | 单条命令超时秒数                        | 是（`--timeout`）      |
+| `MINI_AGENT_CWD`          | 命令工作目录                          | 是（`--cwd`）          |
+| `MINI_AGENT_SKIP_CONFIRM` | 是否跳过确认（`true/false/1/0/yes/no`） | 是（`--skip-confirm`） |
+
+> 优先级：**CLI > 环境变量 > 默认值**。
