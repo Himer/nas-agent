@@ -37,7 +37,8 @@ type Default struct {
 	StepLimit int  // 0 表示不限
 	Confirm   bool // true: 每条命令都问用户是否执行（skip_confirm 关闭时启用）
 
-	messages []Message // 内部消息历史
+	messages []Message        // 内部消息历史
+	todos    []types.TodoItem // 当前任务清单（由 todo_write 工具维护）
 }
 
 // Message 是 types.Message 的别名，单纯为了让 Agent 包对外暴露的 API 更短。
@@ -71,11 +72,21 @@ func (a *Default) Run(ctx context.Context, task string) error {
 	}
 
 	step := 0
+	roundsSinceTodo := 0 // 连续多少轮没调用 todo_write，用于注入 nag reminder
 	for {
 		if a.StepLimit > 0 && step >= a.StepLimit {
 			return fmt.Errorf("reached step limit (%d)", a.StepLimit)
 		}
 		step++
+
+		// Nag reminder：连续 3 轮没调 todo_write 就追加一条提醒（教学版机制）。
+		if roundsSinceTodo >= 3 {
+			a.messages = append(a.messages, types.Message{
+				Role:    "user",
+				Content: "<reminder>Update your todos.</reminder>",
+			})
+			roundsSinceTodo = 0
+		}
 
 		printStepHeader(step, a.StepLimit)
 
@@ -97,8 +108,19 @@ func (a *Default) Run(ctx context.Context, task string) error {
 			return errors.New("model returned empty content and no actions; aborting")
 		}
 
+		// 本轮是否调用了 todo_write
+		calledTodo := false
+
 		// ② 执行命令
 		for _, act := range actions {
+			if act.Tool == "todo_write" {
+				calledTodo = true
+				a.todos = act.Todos
+				printTodos(a.todos)
+				a.messages = append(a.messages, makeTodoResult(act))
+				continue
+			}
+
 			if a.Confirm && !confirmCommand(act.Command) {
 				a.messages = append(a.messages, makeToolResult(act, types.ExecResult{
 					Output:     "[user rejected this command]",
@@ -120,7 +142,27 @@ func (a *Default) Run(ctx context.Context, task string) error {
 				return nil
 			}
 		}
+
+		if calledTodo {
+			roundsSinceTodo = 0
+		} else {
+			roundsSinceTodo++
+		}
 	}
+}
+
+// makeTodoResult 把 todo_write 调用包装成 tool result 消息，回执当前清单。
+func makeTodoResult(act types.Action) types.Message {
+	var sb strings.Builder
+	sb.WriteString("Todos updated:\n")
+	for _, t := range act.Todos {
+		sb.WriteString(fmt.Sprintf("- [%s] %s\n", t.Status, t.Content))
+	}
+	content := strings.TrimRight(sb.String(), "\n")
+	if act.ToolCallID != "" {
+		return types.Message{Role: "tool", ToolCallID: act.ToolCallID, Content: content}
+	}
+	return types.Message{Role: "user", Content: content}
 }
 
 // makeToolResult 把命令执行结果包装成 OpenAI tool/user 消息。
@@ -165,6 +207,10 @@ func printAssistant(m types.Message) {
 		_, _ = fmt.Printf("%s🤖 assistant%s\n%s\n", cBold+cMag, cReset, indent(s, "   "))
 	}
 	for _, tc := range m.ToolCalls {
+		// todo_write 的清单由 printTodos 单独渲染，这里不重复打印原始参数。
+		if tc.Function.Name == "todo_write" {
+			continue
+		}
 		cmd := prettyToolArgs(tc.Function.Arguments)
 		_, _ = fmt.Printf("%s🛠  %s%s\n%s\n", cBold+cBlue, tc.Function.Name, cReset, indent(cmd, "   "))
 	}
@@ -183,6 +229,23 @@ func prettyToolArgs(args string) string {
 
 func printCommand(cmd string) {
 	_, _ = fmt.Printf("\n%s💻 $%s %s\n", cBold+cYellow, cReset, cmd)
+}
+
+// printTodos 以勾选清单的形式渲染当前任务列表。
+func printTodos(todos []types.TodoItem) {
+	_, _ = fmt.Printf("\n%s📋 todos%s\n", cBold+cBlue, cReset)
+	for _, t := range todos {
+		var mark, color string
+		switch t.Status {
+		case "completed":
+			mark, color = "✔", cGreen
+		case "in_progress":
+			mark, color = "▶", cYellow
+		default:
+			mark, color = "○", cDim
+		}
+		_, _ = fmt.Printf("   %s%s%s %s\n", color, mark, cReset, t.Content)
+	}
 }
 
 func printResult(r types.ExecResult) {

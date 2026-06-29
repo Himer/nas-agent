@@ -18,7 +18,7 @@ import (
 	"github.com/Himer/nas-agent/pkg/types"
 )
 
-// BashTool 是开放给大模型的唯一工具：执行 bash 命令。
+// BashTool 是开放给大模型的工具之一：执行 bash 命令。
 var BashTool = map[string]any{
 	"type": "function",
 	"function": map[string]any{
@@ -33,6 +33,37 @@ var BashTool = map[string]any{
 				},
 			},
 			"required": []string{"command"},
+		},
+	},
+}
+
+// TodoWriteTool 让模型维护一份任务清单，用于拆解和跟踪多步骤任务。
+var TodoWriteTool = map[string]any{
+	"type": "function",
+	"function": map[string]any{
+		"name": "todo_write",
+		"description": "Create and manage a structured task list for the current session. " +
+			"Use it to break a non-trivial task into steps, then update each step's status " +
+			"as you make progress. Pass the FULL list every time (not a diff).",
+		"parameters": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"todos": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"content": map[string]any{"type": "string"},
+							"status": map[string]any{
+								"type": "string",
+								"enum": []string{"pending", "in_progress", "completed"},
+							},
+						},
+						"required": []string{"content", "status"},
+					},
+				},
+			},
+			"required": []string{"todos"},
 		},
 	},
 }
@@ -130,7 +161,7 @@ func (o *OpenAI) Query(ctx context.Context, messages []types.Message) (types.Mes
 	reqBody := chatRequest{
 		Model:    o.ModelName,
 		Messages: normalizeMessages(messages),
-		Tools:    []map[string]any{BashTool},
+		Tools:    []map[string]any{BashTool, TodoWriteTool},
 	}
 	body, _ := json.Marshal(reqBody)
 
@@ -184,25 +215,35 @@ func extractActions(msg types.Message) ([]types.Action, error) {
 	if len(msg.ToolCalls) > 0 {
 		actions := make([]types.Action, 0, len(msg.ToolCalls))
 		for _, tc := range msg.ToolCalls {
-			if tc.Function.Name != "bash" {
+			switch tc.Function.Name {
+			case "bash":
+				var args struct {
+					Command string `json:"command"`
+				}
+				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+					return nil, fmt.Errorf("parse tool arguments: %w", err)
+				}
+				if args.Command == "" {
+					return nil, errors.New("empty 'command' in tool call")
+				}
+				actions = append(actions, types.Action{Tool: "bash", Command: args.Command, ToolCallID: tc.ID})
+			case "todo_write":
+				var args struct {
+					Todos []types.TodoItem `json:"todos"`
+				}
+				if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+					return nil, fmt.Errorf("parse todo_write arguments: %w", err)
+				}
+				actions = append(actions, types.Action{Tool: "todo_write", Todos: args.Todos, ToolCallID: tc.ID})
+			default:
 				return nil, fmt.Errorf("unknown tool %q", tc.Function.Name)
 			}
-			var args struct {
-				Command string `json:"command"`
-			}
-			if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
-				return nil, fmt.Errorf("parse tool arguments: %w", err)
-			}
-			if args.Command == "" {
-				return nil, errors.New("empty 'command' in tool call")
-			}
-			actions = append(actions, types.Action{Command: args.Command, ToolCallID: tc.ID})
 		}
 		return actions, nil
 	}
 	// 兜底：从 ```bash ... ``` 代码块抽取（兼容不支持 tool calling 的模型）
 	if cmd := extractCodeBlock(msg.Content); cmd != "" {
-		return []types.Action{{Command: cmd}}, nil
+		return []types.Action{{Tool: "bash", Command: cmd}}, nil
 	}
 	return nil, errors.New("no tool_calls and no fenced code block found in assistant response")
 }

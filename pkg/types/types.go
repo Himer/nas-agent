@@ -37,10 +37,25 @@ type ToolCallFunc struct {
 	Arguments string `json:"arguments"` // JSON 字符串
 }
 
-// Action 是 Agent 解析后准备执行的命令。
+// Action 是 Agent 解析后准备执行的一次工具调用。
+//
+// Tool 区分工具类型：
+//   - "bash"       执行 shell 命令，命令在 Command 字段
+//   - "todo_write" 更新任务清单，清单在 Todos 字段
+//
+// 兼容旧逻辑：Tool 为空时按 "bash" 处理。
 type Action struct {
+	Tool       string
 	Command    string
+	Todos      []TodoItem
 	ToolCallID string // 来自 ToolCall.ID，回填到 tool result 消息里
+}
+
+// TodoItem 是 todo_write 工具中的一条任务。
+// Status 取值：pending / in_progress / completed。
+type TodoItem struct {
+	Content string `json:"content"`
+	Status  string `json:"status"`
 }
 
 // ExecResult 是 Environment.Execute 的返回结果。

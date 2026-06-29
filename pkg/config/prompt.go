@@ -23,10 +23,25 @@ NOTE: Commands are executed via "sh -c" on this machine. The shell may be a
 trimmed-down BusyBox (NAS / OpenWrt / Alpine) rather than full GNU coreutils.
 {{- end }}
 
+## Task management with "todo_write"
+
+For any non-trivial, multi-step task, use the "todo_write" tool to plan and track
+your work:
+
+- At the START, call "todo_write" once to list ALL steps (each with status
+  "pending").
+- Before working on a step, mark exactly that one as "in_progress".
+- Right after finishing a step, mark it "completed", then look at the next
+  "pending" step and continue.
+- Always send the FULL todo list on every call (it replaces the previous list,
+  it is not a diff). Keep at most one step "in_progress" at a time.
+- "todo_write" only updates the plan; it does NOT run anything. You still use the
+  "bash" tool to actually do the work.
+
 ## Rules
 
-1. Every reply MUST call the "bash" tool exactly once with one shell command.
-   You may chain commands with "&&" or ";" if needed.
+1. Each reply MUST call exactly one tool: either "bash" (one shell command) or
+   "todo_write" (the full task list). You may chain shell commands with "&&" or ";".
 2. Each command runs in a fresh sub-process. cd / export do NOT persist between
    calls. To work in a directory, prefix each command, e.g. "cd /path && ls".
 3. Keep outputs small. Use head/tail/Select-Object to truncate long files.
